@@ -51,7 +51,7 @@ button,input,select{font:inherit} button{cursor:pointer}
 .editor-recipe-row select,.editor-recipe-row input{width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:white}
 .amount-wrap{position:relative}.amount-wrap input{padding-right:32px}.amount-unit{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none}
 .table .sub{display:block}
-.date-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:12px;box-shadow:var(--shadow);font-weight:700}.date-bar span{font-size:14px}.date-bar input{border:0;outline:0;background:#f5f7fa;border-radius:9px;padding:7px 8px;font-weight:600;color:var(--navy)}
+.month-summary{margin-top:18px}.month-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.month-select{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 9px;color:var(--navy);font-weight:700}.month-kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.month-kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}.month-kpi .label{font-size:11px;color:var(--muted)}.month-kpi b{display:block;font-size:19px;margin-top:3px}.daily-table{margin-top:10px}.date-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:12px;box-shadow:var(--shadow);font-weight:700}.date-bar span{font-size:14px}.date-bar input{border:0;outline:0;background:#f5f7fa;border-radius:9px;padding:7px 8px;font-weight:600;color:var(--navy)}
 </style>
 </head>
 <body>
@@ -102,8 +102,10 @@ const defaultMenus=[
  {name:"มัทฉะ",price:40,cost:14.19,recipe:[["ผงมัทฉะ BK",14],["นมข้นหวาน",25],["นมข้นจืด",25],["Mmilk",30],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]}
 ];
 let oldState=JSON.parse(localStorage.getItem("cafeAppV1")||"null");
-let state=oldState||{ingredients:defaultIngredients,menus:defaultMenus,sales:{},selectedDate:new Date().toISOString().slice(0,10)};
+let state=oldState||{ingredients:defaultIngredients,menus:defaultMenus,sales:{},saleMeta:{},selectedDate:new Date().toISOString().slice(0,10),summaryMonth:new Date().toISOString().slice(0,7)};
 if(!state.selectedDate) state.selectedDate=new Date().toISOString().slice(0,10);
+if(!state.summaryMonth) state.summaryMonth=state.selectedDate.slice(0,7);
+if(!state.saleMeta) state.saleMeta={};
 if(oldState && oldState.ingredients && oldState.ingredients[0] && oldState.ingredients[0].unitCost!=null){
   state.ingredients=defaultIngredients.map((x,i)=>({...x,unitCost:oldState.ingredients[i]?.unitCost ?? x.purchase/x.quantity}));
 }
@@ -122,18 +124,26 @@ function save(){localStorage.setItem("cafeAppV1",JSON.stringify(state))}
 function baht(n){return "฿"+Number(n||0).toFixed(2)}
 function pct(n){return Number(n||0).toFixed(1)+"%"}
 function salesToday(){return state.sales[key()]||{}}
-function totals(){
- let sales=0,cost=0,count=0;
- for(const m of state.menus){
-   let q=salesToday()[m.name]||0;
-   let currentCost=menuCost(m);
-   m.cost=currentCost;
-   sales+=q*m.price;
-   cost+=q*currentCost;
-   count+=q;
- }
- return {sales,cost,profit:sales-cost,count,margin:sales?sales-cost>=0?(sales-cost)/sales*100:0:0}
+function saleUnitInfo(date,name){
+ const m=state.menus.find(x=>x.name===name); const snap=state.saleMeta?.[date]?.[name];
+ return {price:Number(snap?.price ?? m?.price ?? 0),cost:Number(snap?.cost ?? (m?menuCost(m):0))};
 }
+function totalsForDate(date){
+ const data=state.sales[date]||{}; let sales=0,cost=0,count=0;
+ for(const name of Object.keys(data)){const q=Math.max(0,Number(data[name]||0));const i=saleUnitInfo(date,name);sales+=q*i.price;cost+=q*i.cost;count+=q;}
+ return {sales,cost,profit:sales-cost,count,margin:sales?sales-cost>=0?(sales-cost)/sales*100:0:0};
+}
+function totals(){return totalsForDate(key())}
+function monthSummary(ym){
+ let sales=0,cost=0,count=0,days=[];
+ Object.keys(state.sales||{}).filter(d=>d.startsWith(ym)).sort().forEach(d=>{const t=totalsForDate(d);if(t.count||t.sales||t.cost){sales+=t.sales;cost+=t.cost;count+=t.count;days.push({date:d,...t})}});
+ return {sales,cost,profit:sales-cost,count,margin:sales?sales-cost>=0?(sales-cost)/sales*100:0:0,days};
+}
+function renderMonthSummary(ym){
+ const m=monthSummary(ym);
+ return `<div class="month-summary"><div class="month-head"><h2 style="font-size:17px;margin:0">📊 สรุปประจำเดือน</h2><input class="month-select" type="month" value="${ym}" onchange="changeSummaryMonth(this.value)"></div><div class="month-kpis"><div class="month-kpi"><div class="label">ยอดขายรวม</div><b>${baht(m.sales)}</b></div><div class="month-kpi"><div class="label">ต้นทุนรวม</div><b>${baht(m.cost)}</b></div><div class="month-kpi"><div class="label">กำไรรวม</div><b style="color:var(--green)">${baht(m.profit)}</b></div><div class="month-kpi"><div class="label">กำไร %</div><b>${pct(m.margin)}</b></div></div><div class="section"><h2>ยอดขายรายวัน</h2><span class="pill">${m.count} แก้ว</span></div><div class="table daily-table"><div class="tr th"><span>วันที่</span><span class="right">ขาย</span><span class="right">ต้นทุน</span><span class="right">กำไร</span></div>${m.days.length?m.days.map(d=>`<div class="tr"><span>${new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short'}).format(new Date(d.date+'T00:00:00'))}</span><span class="right">${baht(d.sales)}</span><span class="right">${baht(d.cost)}</span><span class="right profit">${baht(d.profit)}</span></div>`).join(''):`<div class="empty">ยังไม่มียอดขายในเดือนนี้</div>`}</div></div>`;
+}
+function changeSummaryMonth(v){if(v){state.summaryMonth=v;save();renderSales();}}
 function setPage(p){
  document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));
  document.getElementById("title").textContent={sales:"ยอดขายวันนี้",menus:"ต้นทุนและกำไรต่อเมนู",ingredients:"คลังวัตถุดิบ"}[p];
@@ -165,17 +175,18 @@ function renderSales(){
    <div style="display:flex;justify-content:space-between;margin-top:8px"><span>ต้นทุนรวม</span><b>${baht(t.cost)}</b></div>
    <div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--green)"><span>กำไรสุทธิจากการขาย</span><b>${baht(t.profit)}</b></div>
    <div style="display:flex;justify-content:space-between;margin-top:8px"><span>อัตรากำไร</span><b>${pct(t.margin)}</b></div>
- </div>`;
+ </div>
+ ${renderMonthSummary(state.summaryMonth||state.selectedDate.slice(0,7))}`;
 }
 function setSale(name,value){
- const k=key(); if(!state.sales[k])state.sales[k]={};
- state.sales[k][name]=Math.max(0,parseInt(value||0,10));
- save();renderSales();
+ const k=key(); if(!state.sales[k])state.sales[k]={}; if(!state.saleMeta[k])state.saleMeta[k]={};
+ if(!state.saleMeta[k][name]){const m=state.menus.find(x=>x.name===name);state.saleMeta[k][name]={price:Number(m?.price||0),cost:Number(m?menuCost(m):0)}}
+ state.sales[k][name]=Math.max(0,parseInt(value||0,10)); save();renderSales();
 }
 function changeSale(name,delta){
- const k=key(); if(!state.sales[k])state.sales[k]={};
- state.sales[k][name]=Math.max(0,(state.sales[k][name]||0)+delta);
- save();renderSales();
+ const k=key(); if(!state.sales[k])state.sales[k]={}; if(!state.saleMeta[k])state.saleMeta[k]={};
+ if(!state.saleMeta[k][name]){const m=state.menus.find(x=>x.name===name);state.saleMeta[k][name]={price:Number(m?.price||0),cost:Number(m?menuCost(m):0)}}
+ state.sales[k][name]=Math.max(0,(state.sales[k][name]||0)+delta); save();renderSales();
 }
 function clearToday(){if(confirm("ล้างยอดขายของวันนี้ทั้งหมด?")){delete state.sales[key()];save();renderSales()}}
 function renderMenus(){
