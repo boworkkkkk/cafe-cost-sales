@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#17395f">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
-<title>Cafe Cost & Sales</title>
+<title>Fighter Coffee</title>
 <style>
 :root{
   --navy:#17395f;--navy2:#245b8f;--bg:#f5f7fa;--card:#fff;--text:#17202a;
@@ -27,7 +27,7 @@ button,input,select{font:inherit} button{cursor:pointer}
 .row .name{font-weight:700}.sub{font-size:12px;color:var(--muted);margin-top:2px}
 .pill{padding:5px 8px;border-radius:9px;background:#edf3f8;color:var(--navy);font-size:12px;font-weight:700}
 .money{font-weight:800}.profit{color:var(--green);font-weight:800}
-.bottom{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:20}
+.bottom{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:20}
 .nav{border:0;background:none;color:#8993a1;font-size:11px;padding:6px}.nav .ico{font-size:21px;display:block}.nav.active{color:var(--navy);font-weight:800}
 .primary{border:0;background:var(--navy);color:#fff;border-radius:12px;padding:10px 14px;font-weight:700}
 .search{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:white;outline:none}
@@ -57,7 +57,7 @@ button,input,select{font:inherit} button{cursor:pointer}
 <body>
 <div class="app">
   <header class="top">
-    <small>CAFE COST & SALES</small>
+    <small>FIGHTER COFFEE</small>
     <h1 id="title">ยอดขายวันนี้</h1>
     <div class="date" id="today"></div>
   </header>
@@ -66,6 +66,7 @@ button,input,select{font:inherit} button{cursor:pointer}
     <button class="nav active" data-page="sales"><span class="ico">🧾</span>ขายวันนี้</button>
     <button class="nav" data-page="menus"><span class="ico">☕</span>ต้นทุนเมนู</button>
     <button class="nav" data-page="ingredients"><span class="ico">📦</span>วัตถุดิบ</button>
+    <button class="nav" data-page="purchases"><span class="ico">🛒</span>ซื้อของ</button>
   </nav>
 </div>
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
@@ -102,13 +103,13 @@ const defaultMenus=[
  {name:"มัทฉะ",price:40,cost:14.19,recipe:[["ผงมัทฉะ BK",14],["นมข้นหวาน",25],["นมข้นจืด",25],["Mmilk",30],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]}
 ];
 let oldState=JSON.parse(localStorage.getItem("cafeAppV1")||"null");
-let state=oldState||{ingredients:defaultIngredients,menus:defaultMenus,sales:{},saleMeta:{},selectedDate:new Date().toISOString().slice(0,10),summaryMonth:new Date().toISOString().slice(0,7)};
+let state=oldState||{ingredients:defaultIngredients,menus:defaultMenus,sales:{},saleMeta:{},purchases:[],selectedDate:new Date().toISOString().slice(0,10),summaryMonth:new Date().toISOString().slice(0,7)};
 if(!state.selectedDate) state.selectedDate=new Date().toISOString().slice(0,10);
 if(!state.summaryMonth) state.summaryMonth=state.selectedDate.slice(0,7);
 if(!state.saleMeta) state.saleMeta={};
-if(oldState && oldState.ingredients && oldState.ingredients[0] && oldState.ingredients[0].unitCost!=null){
-  state.ingredients=defaultIngredients.map((x,i)=>({...x,unitCost:oldState.ingredients[i]?.unitCost ?? x.purchase/x.quantity}));
-}
+if(!state.purchases) state.purchases=[];
+if(!state.ingredients || !Array.isArray(state.ingredients)) state.ingredients=defaultIngredients;
+if(!state.menus || !Array.isArray(state.menus)) state.menus=defaultMenus;
 function unitCost(x){return Number(x.quantity)?Number(x.purchase)/Number(x.quantity):0}
 function menuCost(m){
  const calculated=(m.recipe||[]).reduce((sum,r)=>{
@@ -137,17 +138,18 @@ function totals(){return totalsForDate(key())}
 function monthSummary(ym){
  let sales=0,cost=0,count=0,days=[];
  Object.keys(state.sales||{}).filter(d=>d.startsWith(ym)).sort().forEach(d=>{const t=totalsForDate(d);if(t.count||t.sales||t.cost){sales+=t.sales;cost+=t.cost;count+=t.count;days.push({date:d,...t})}});
- return {sales,cost,profit:sales-cost,count,margin:sales?sales-cost>=0?(sales-cost)/sales*100:0:0,days};
+ const purchaseSpend=state.purchases.filter(x=>x.date?.startsWith(ym)).reduce((sum,x)=>sum+Number(x.price||0),0);
+ return {sales,cost,profit:sales-cost,count,margin:sales?sales-cost>=0?(sales-cost)/sales*100:0:0,days,purchaseSpend,cashNet:sales-purchaseSpend};
 }
 function renderMonthSummary(ym){
  const m=monthSummary(ym);
- return `<div class="month-summary"><div class="month-head"><h2 style="font-size:17px;margin:0">📊 สรุปประจำเดือน</h2><input class="month-select" type="month" value="${ym}" onchange="changeSummaryMonth(this.value)"></div><div class="month-kpis"><div class="month-kpi"><div class="label">ยอดขายรวม</div><b>${baht(m.sales)}</b></div><div class="month-kpi"><div class="label">ต้นทุนรวม</div><b>${baht(m.cost)}</b></div><div class="month-kpi"><div class="label">กำไรรวม</div><b style="color:var(--green)">${baht(m.profit)}</b></div><div class="month-kpi"><div class="label">กำไร %</div><b>${pct(m.margin)}</b></div></div><div class="section"><h2>ยอดขายรายวัน</h2><span class="pill">${m.count} แก้ว</span></div><div class="table daily-table"><div class="tr th"><span>วันที่</span><span class="right">ขาย</span><span class="right">ต้นทุน</span><span class="right">กำไร</span></div>${m.days.length?m.days.map(d=>`<div class="tr"><span>${new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short'}).format(new Date(d.date+'T00:00:00'))}</span><span class="right">${baht(d.sales)}</span><span class="right">${baht(d.cost)}</span><span class="right profit">${baht(d.profit)}</span></div>`).join(''):`<div class="empty">ยังไม่มียอดขายในเดือนนี้</div>`}</div></div>`;
+ return `<div class="month-summary"><div class="month-head"><h2 style="font-size:17px;margin:0">📊 สรุปประจำเดือน</h2><input class="month-select" type="month" value="${ym}" onchange="changeSummaryMonth(this.value)"></div><div class="month-kpis"><div class="month-kpi"><div class="label">ยอดขายรวม</div><b>${baht(m.sales)}</b></div><div class="month-kpi"><div class="label">ต้นทุนขาย</div><b>${baht(m.cost)}</b></div><div class="month-kpi"><div class="label">กำไรรวม</div><b style="color:var(--green)">${baht(m.profit)}</b></div><div class="month-kpi"><div class="label">กำไร %</div><b>${pct(m.margin)}</b></div><div class="month-kpi"><div class="label">เงินซื้อของ</div><b style="color:var(--orange)">${baht(m.purchaseSpend)}</b></div><div class="month-kpi"><div class="label">เงินสดสุทธิ*</div><b>${baht(m.cashNet)}</b></div></div><div class="sub" style="margin-top:8px">* ยอดขาย − เงินที่จ่ายซื้อของในเดือนนั้น ไม่ใช่กำไรทางบัญชี</div><div class="section"><h2>ยอดขายรายวัน</h2><span class="pill">${m.count} แก้ว</span></div><div class="table daily-table"><div class="tr th"><span>วันที่</span><span class="right">ขาย</span><span class="right">ต้นทุน</span><span class="right">กำไร</span></div>${m.days.length?m.days.map(d=>`<div class="tr"><span>${new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short'}).format(new Date(d.date+'T00:00:00'))}</span><span class="right">${baht(d.sales)}</span><span class="right">${baht(d.cost)}</span><span class="right profit">${baht(d.profit)}</span></div>`).join(''):`<div class="empty">ยังไม่มียอดขายในเดือนนี้</div>`}</div></div>`;
 }
 function changeSummaryMonth(v){if(v){state.summaryMonth=v;save();renderSales();}}
 function setPage(p){
  document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));
- document.getElementById("title").textContent={sales:"ยอดขายวันนี้",menus:"ต้นทุนและกำไรต่อเมนู",ingredients:"คลังวัตถุดิบ"}[p];
- ({sales:renderSales,menus:renderMenus,ingredients:renderIngredients}[p])();
+ document.getElementById("title").textContent={sales:"ยอดขายวันนี้",menus:"ต้นทุนและกำไรต่อเมนู",ingredients:"คลังวัตถุดิบ",purchases:"ซื้อของเข้าร้าน"}[p];
+ ({sales:renderSales,menus:renderMenus,ingredients:renderIngredients,purchases:renderPurchases}[p])();
 }
 document.querySelectorAll(".nav").forEach(x=>x.onclick=()=>setPage(x.dataset.page));
 function changeSaleDate(v){ if(!v)return; state.selectedDate=v; save(); renderSales(); }
@@ -252,6 +254,47 @@ function saveMenu(i){
  save();closeModal();renderMenus();
 }
 function deleteMenu(i){if(confirm("ลบเมนูนี้?")){state.menus.splice(i,1);save();renderMenus()}}
+function purchaseMonth(ym){return state.purchases.filter(x=>x.date?.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date)||String(b.id).localeCompare(String(a.id)));}
+function renderPurchases(){
+ const ym=state.summaryMonth||state.selectedDate.slice(0,7), rows=purchaseMonth(ym), total=rows.reduce((s,x)=>s+Number(x.price||0),0);
+ document.getElementById("content").innerHTML=`
+ <div class="section"><h2>รายการซื้อของ</h2><button onclick="openPurchase()">＋ บันทึกซื้อ</button></div>
+ <div class="card" style="margin-bottom:12px"><div class="sub">ยอดซื้อเดือนนี้</div><div style="display:flex;justify-content:space-between;align-items:end"><b style="font-size:25px">${baht(total)}</b><span class="pill">${rows.length} รายการ</span></div></div>
+ <div class="date-bar"><span>📅 เดือน</span><input type="month" value="${ym}" onchange="changePurchaseMonth(this.value)"></div>
+ <div class="list">${rows.length?rows.map((x,i)=>`<div class="row"><div><div class="name">${x.ingredient}</div><div class="sub">${formatThaiDate(x.date)} · ซื้อ ${Number(x.qty)} ${x.unit} · ${baht(x.price)}</div></div><button class="secondary" style="padding:6px 9px" onclick="deletePurchase('${x.id}')">ลบ</button></div>`).join(''):`<div class="empty">ยังไม่มีรายการซื้อในเดือนนี้</div>`}</div>
+ <div class="card" style="margin-top:12px"><b>เชื่อมกับต้นทุนเมนู</b><div class="sub" style="margin-top:5px">เมื่อบันทึกการซื้อ ระบบจะเก็บประวัติการซื้อไว้ และอัปเดตราคาซื้อปัจจุบันของวัตถุดิบนั้นให้เป็นราคาล่าสุด เพื่อคำนวณต้นทุนเมนูรอบต่อไป</div></div>`;
+}
+function formatThaiDate(d){return new Intl.DateTimeFormat('th-TH',{day:'numeric',month:'short',year:'numeric'}).format(new Date(d+'T00:00:00'));}
+function changePurchaseMonth(v){if(v){state.summaryMonth=v;save();renderPurchases();}}
+function openPurchase(){
+ const options=state.ingredients.map(x=>`<option value="${x.name}">${x.name}</option>`).join('');
+ document.getElementById("sheet").innerHTML=`<h3>🛒 บันทึกซื้อของเข้าร้าน</h3>
+ <div class="field"><label>วันที่ซื้อ</label><input id="pd" type="date" value="${state.selectedDate}"></div>
+ <div class="field"><label>วัตถุดิบ</label><select id="pi">${options}</select></div>
+ <div class="field"><label>ปริมาณที่ซื้อ</label><input id="pq" type="number" step=".01" min="0" placeholder="เช่น 2000"></div>
+ <div class="field"><label>หน่วย</label><select id="pu"><option value="g">g</option><option value="ml">ml</option><option value="ชิ้น">ชิ้น</option></select></div>
+ <div class="field"><label>จ่ายจริง (บาท)</label><input id="pp" type="number" step=".01" min="0" placeholder="เช่น 105"></div>
+ <div class="card" style="background:#f8fafc"><div class="sub">ระบบจะเก็บรายการนี้แยกเป็นประวัติ และใช้ราคาซื้อล่าสุดเป็นราคาปัจจุบันของวัตถุดิบ</div></div>
+ <div class="actions"><button class="secondary" onclick="closeModal()">ยกเลิก</button><button class="primary" onclick="savePurchase()">บันทึก</button></div>`;
+ showModal();
+ document.getElementById('pi').onchange=()=>syncPurchaseUnit();
+ syncPurchaseUnit();
+}
+function syncPurchaseUnit(){const n=document.getElementById('pi').value;const ing=state.ingredients.find(x=>x.name===n);if(ing)document.getElementById('pu').value=ing.unit;}
+function savePurchase(){
+ const date=document.getElementById('pd').value, ingredient=document.getElementById('pi').value, qty=Number(document.getElementById('pq').value||0), unit=document.getElementById('pu').value, price=Number(document.getElementById('pp').value||0);
+ if(!date||!ingredient||qty<=0||price<0)return alert('กรุณากรอกวันที่ วัตถุดิบ ปริมาณ และราคาที่จ่ายให้ครบ');
+ const id=Date.now().toString(); state.purchases.push({id,date,ingredient,qty,unit,price});
+ const ing=state.ingredients.find(x=>x.name===ingredient);
+ if(ing){ing.purchase=price;ing.quantity=qty;ing.unit=unit;}
+ ensureMenuCosts(); save(); closeModal(); state.summaryMonth=date.slice(0,7); state.selectedDate=date; save(); renderPurchases();
+}
+function deletePurchase(id){
+ const x=state.purchases.find(p=>String(p.id)===String(id)); if(!x)return;
+ if(!confirm(`ลบรายการซื้อ ${x.ingredient} ${baht(x.price)} ?`))return;
+ state.purchases=state.purchases.filter(p=>String(p.id)!==String(id)); save(); renderPurchases();
+}
+
 function renderIngredients(){
  document.getElementById("content").innerHTML=`
  <input class="search" id="search" placeholder="ค้นหาวัตถุดิบ..." oninput="filterIngredients()">
