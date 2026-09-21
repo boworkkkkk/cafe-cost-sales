@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#17395f">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<title>Cafe Cost & Sales</title>
+<style>
+:root{
+  --navy:#17395f;--navy2:#245b8f;--bg:#f5f7fa;--card:#fff;--text:#17202a;
+  --muted:#718096;--line:#e7ebf0;--green:#16834b;--greenbg:#eaf7ef;
+  --orange:#d97706;--orangebg:#fff5df;--red:#c24141;--shadow:0 4px 18px rgba(20,40,70,.08);
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif;color:var(--text)}
+button,input,select{font:inherit} button{cursor:pointer}
+.app{max-width:520px;margin:auto;min-height:100vh;padding-bottom:82px}
+.top{background:linear-gradient(135deg,var(--navy),var(--navy2));color:white;padding:18px 18px 20px;border-radius:0 0 24px 24px}
+.top small{opacity:.8}.top h1{font-size:24px;margin:3px 0}.date{font-size:13px;opacity:.85}
+.content{padding:14px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:-2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px;box-shadow:var(--shadow)}
+.kpi .label{font-size:11px;color:var(--muted)}.kpi .value{font-weight:800;font-size:20px;margin-top:3px}.kpi.green .value{color:var(--green)}
+.section{display:flex;justify-content:space-between;align-items:center;margin:20px 2px 9px}.section h2{font-size:17px;margin:0}.section button{border:0;background:#eaf1f8;color:var(--navy);padding:7px 10px;border-radius:10px;font-size:12px}
+.list{display:grid;gap:9px}.row{background:white;border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between}
+.row .name{font-weight:700}.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.pill{padding:5px 8px;border-radius:9px;background:#edf3f8;color:var(--navy);font-size:12px;font-weight:700}
+.money{font-weight:800}.profit{color:var(--green);font-weight:800}
+.bottom{position:fixed;bottom:0;left:0;right:0;max-width:520px;margin:auto;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:20}
+.nav{border:0;background:none;color:#8993a1;font-size:11px;padding:6px}.nav .ico{font-size:21px;display:block}.nav.active{color:var(--navy);font-weight:800}
+.primary{border:0;background:var(--navy);color:#fff;border-radius:12px;padding:10px 14px;font-weight:700}
+.search{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:white;outline:none}
+.progress{height:7px;background:#edf0f3;border-radius:99px;overflow:hidden;margin-top:8px}.bar{height:100%;background:var(--green)}
+.table{background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.tr{display:grid;grid-template-columns:1.4fr .65fr .75fr .75fr;gap:6px;padding:10px 11px;border-bottom:1px solid var(--line);font-size:12px;align-items:center}.tr:last-child{border-bottom:0}.th{background:#f8fafc;color:#667085;font-weight:700}.right{text-align:right}
+.menu-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.menu-head{display:flex;justify-content:space-between;align-items:start}.menu-name{font-weight:800;font-size:16px}.price{font-size:17px;font-weight:900}.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:11px}.stat{background:#f8fafc;border-radius:10px;padding:8px}.stat span{display:block;color:var(--muted);font-size:10px}.stat b{font-size:14px}.tag-good{color:var(--green)}.tag-cost{color:var(--orange)}
+.sale-grid{display:grid;grid-template-columns:1fr 48px 82px;gap:8px;align-items:center}.qty{display:flex;align-items:center;justify-content:center;gap:5px}.qty button{width:28px;height:28px;border:1px solid var(--line);background:white;border-radius:8px}.qty b{min-width:18px;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;z-index:50}.modal.show{display:flex}.sheet{background:#fff;width:100%;max-width:520px;margin:auto;border-radius:22px 22px 0 0;padding:18px;max-height:85vh;overflow:auto}.sheet h3{margin:0 0 14px}.field{margin:10px 0}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}.field input,.field select{width:100%;padding:11px;border:1px solid var(--line);border-radius:10px}.actions{display:flex;gap:8px;margin-top:15px}.actions>*{flex:1}.secondary{border:1px solid var(--line);background:white;border-radius:12px;padding:10px}
+.empty{text-align:center;color:var(--muted);padding:30px 10px}
+@media(min-width:700px){body{background:#e9eef4}.app{background:var(--bg);box-shadow:0 0 40px rgba(0,0,0,.08)}}
+
+.qty-input{width:48px;height:32px;border:1px solid var(--line);border-radius:8px;text-align:center;font-weight:800;background:#fff}
+.qty-input::-webkit-inner-spin-button{opacity:1}
+.recipe{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.recipe summary{cursor:pointer;color:var(--navy);font-size:13px;font-weight:800}
+.recipe-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.recipe-row small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.recipe-total{display:flex;justify-content:space-between;padding-top:9px;font-weight:800}
+.editor-recipe-row{display:grid;grid-template-columns:1fr 80px 48px;gap:7px;margin:7px 0}
+.editor-recipe-row select,.editor-recipe-row input{width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:white}
+.amount-wrap{position:relative}.amount-wrap input{padding-right:32px}.amount-unit{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--muted);pointer-events:none}
+.table .sub{display:block}
+.date-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:12px;box-shadow:var(--shadow);font-weight:700}.date-bar span{font-size:14px}.date-bar input{border:0;outline:0;background:#f5f7fa;border-radius:9px;padding:7px 8px;font-weight:600;color:var(--navy)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <small>CAFE COST & SALES</small>
+    <h1 id="title">ยอดขายวันนี้</h1>
+    <div class="date" id="today"></div>
+  </header>
+  <main class="content" id="content"></main>
+  <nav class="bottom">
+    <button class="nav active" data-page="sales"><span class="ico">🧾</span>ขายวันนี้</button>
+    <button class="nav" data-page="menus"><span class="ico">☕</span>ต้นทุนเมนู</button>
+    <button class="nav" data-page="ingredients"><span class="ico">📦</span>วัตถุดิบ</button>
+  </nav>
+</div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+const defaultIngredients=[
+ {name:"ผงโกโก้ Aroma",purchase:219,quantity:100,unit:"g"},
+ {name:"ผงโกโก้ Duch",purchase:325,quantity:450,unit:"g"},
+ {name:"นมข้นหวาน",purchase:105,quantity:2000,unit:"g"},
+ {name:"นมข้นจืด",purchase:58,quantity:1000,unit:"ml"},
+ {name:"Mmilk",purchase:98,quantity:2000,unit:"ml"},
+ {name:"วิป icehot",purchase:115,quantity:907,unit:"g"},
+ {name:"คอฟ",purchase:140,quantity:1000,unit:"g"},
+ {name:"Aroma แดง",purchase:115,quantity:1000,unit:"g"},
+ {name:"น้ำเชื่อม",purchase:99,quantity:300,unit:"ml"},
+ {name:"น้ำมะพร้าว",purchase:25,quantity:350,unit:"ml"},
+ {name:"แก้ว 16 oz",purchase:55,quantity:50,unit:"ชิ้น"},
+ {name:"ฝา 98",purchase:30,quantity:50,unit:"ชิ้น"},
+ {name:"หลอด",purchase:67,quantity:200,unit:"ชิ้น"},
+ {name:"ชาเขียว",purchase:75,quantity:180,unit:"g"},
+ {name:"ชา S",purchase:85,quantity:400,unit:"g"},
+ {name:"ชา 999",purchase:135,quantity:1000,unit:"g"},
+ {name:"ขวานเขียว",purchase:125,quantity:1000,unit:"g"},
+ {name:"Coffee แม่จันใต้",purchase:426,quantity:1000,unit:"g"},
+ {name:"น้ำร้อน",purchase:79,quantity:500,unit:"ml"},
+ {name:"น้ำเปล่า",purchase:30,quantity:7200,unit:"ml"}
+];
+const defaultMenus=[
+ {name:"โกโก้",price:35,cost:12.92,recipe:[["ผงโกโก้ Aroma",14],["นมข้นหวาน",25],["นมข้นจืด",25],["Mmilk",70],["น้ำร้อน",40],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]},
+ {name:"ชาเขียว",price:35,cost:13.70,recipe:[["ชาเขียว",9.5],["ชา S",3],["ขวานเขียว",35],["ชา 999",0],["นมข้นหวาน",35],["นมข้นจืด",35],["Mmilk",10],["น้ำร้อน",90],["คอฟ",10],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]},
+ {name:"ชาไทย",price:30,cost:10.16,recipe:[["ชา S",3.7],["ขวานเขียว",3.7],["ชา 999",1.9],["นมข้นหวาน",31.5],["นมข้นจืด",31.5],["Mmilk",20],["น้ำร้อน",90],["คอฟ",10],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]},
+ {name:"เอสเย็น",price:35,cost:14.19,recipe:[["Coffee แม่จันใต้",18],["นมข้นหวาน",25],["นมข้นจืด",25],["Mmilk",30],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]},
+ {name:"อเมริกาโน่",price:35,cost:10.20,recipe:[["Coffee แม่จันใต้",18],["น้ำร้อน",90],["น้ำเปล่า",60],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]},
+ {name:"มัทฉะ",price:40,cost:14.19,recipe:[["ผงมัทฉะ BK",14],["นมข้นหวาน",25],["นมข้นจืด",25],["Mmilk",30],["แก้ว 16 oz",1],["ฝา 98",1],["หลอด",1]]}
+];
+let oldState=JSON.parse(localStorage.getItem("cafeAppV1")||"null");
+let state=oldState||{ingredients:defaultIngredients,menus:defaultMenus,sales:{},selectedDate:new Date().toISOString().slice(0,10)};
+if(!state.selectedDate) state.selectedDate=new Date().toISOString().slice(0,10);
+if(oldState && oldState.ingredients && oldState.ingredients[0] && oldState.ingredients[0].unitCost!=null){
+  state.ingredients=defaultIngredients.map((x,i)=>({...x,unitCost:oldState.ingredients[i]?.unitCost ?? x.purchase/x.quantity}));
+}
+function unitCost(x){return Number(x.quantity)?Number(x.purchase)/Number(x.quantity):0}
+function menuCost(m){
+ const calculated=(m.recipe||[]).reduce((sum,r)=>{
+   const ing=state.ingredients.find(x=>x.name===r[0]);
+   return sum+(ing?unitCost(ing)*Number(r[1]):0);
+ },0);
+ return calculated>0 ? calculated : Number(m.cost||0);
+}
+function ensureMenuCosts(){state.menus.forEach(m=>{if(m.recipe)m.cost=menuCost(m)});}
+ensureMenuCosts();
+const key=()=>state.selectedDate || new Date().toISOString().slice(0,10);
+function save(){localStorage.setItem("cafeAppV1",JSON.stringify(state))}
+function baht(n){return "฿"+Number(n||0).toFixed(2)}
+function pct(n){return Number(n||0).toFixed(1)+"%"}
+function salesToday(){return state.sales[key()]||{}}
+function totals(){
+ let sales=0,cost=0,count=0;
+ for(const m of state.menus){
+   let q=salesToday()[m.name]||0;
+   let currentCost=menuCost(m);
+   m.cost=currentCost;
+   sales+=q*m.price;
+   cost+=q*currentCost;
+   count+=q;
+ }
+ return {sales,cost,profit:sales-cost,count,margin:sales?sales-cost>=0?(sales-cost)/sales*100:0:0}
+}
+function setPage(p){
+ document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));
+ document.getElementById("title").textContent={sales:"ยอดขายวันนี้",menus:"ต้นทุนและกำไรต่อเมนู",ingredients:"คลังวัตถุดิบ"}[p];
+ ({sales:renderSales,menus:renderMenus,ingredients:renderIngredients}[p])();
+}
+document.querySelectorAll(".nav").forEach(x=>x.onclick=()=>setPage(x.dataset.page));
+function changeSaleDate(v){ if(!v)return; state.selectedDate=v; save(); renderSales(); }
+function renderSales(){
+ const t=totals(), s=salesToday();
+ const d=document.getElementById("saleDate");
+ if(d) d.value=state.selectedDate;
+ document.getElementById("content").innerHTML=`
+ <div class="date-bar"><span>📅 วันที่ขาย</span><input id="saleDate" type="date" value="${state.selectedDate}" onchange="changeSaleDate(this.value)"></div>
+ <div class="cards">
+  <div class="card kpi"><div class="label">ยอดขาย</div><div class="value">${baht(t.sales)}</div></div>
+  <div class="card kpi"><div class="label">ต้นทุน</div><div class="value">${baht(t.cost)}</div></div>
+  <div class="card kpi green"><div class="label">กำไร</div><div class="value">${baht(t.profit)}</div></div>
+ </div>
+ <div class="section"><h2>บันทึกยอดขาย</h2><button onclick="clearToday()">ล้างวันนี้</button></div>
+ <div class="list">
+ ${state.menus.map(m=>`<div class="row">
+   <div><div class="name">${m.name}</div><div class="sub">${baht(m.price)} / แก้ว · ต้นทุน ${baht(m.cost)}</div></div>
+   <div class="qty"><button onclick="changeSale('${m.name}',-1)">−</button><input class="qty-input" type="number" min="0" value="${s[m.name]||0}" onchange="setSale('${m.name}',this.value)"><button onclick="changeSale('${m.name}',1)">+</button></div>
+ </div>`).join("")}
+ </div>
+ <div class="section"><h2>สรุปวันนี้</h2><span class="pill">${t.count} แก้ว</span></div>
+ <div class="card">
+   <div style="display:flex;justify-content:space-between"><span>ยอดขาย</span><b>${baht(t.sales)}</b></div>
+   <div style="display:flex;justify-content:space-between;margin-top:8px"><span>ต้นทุนรวม</span><b>${baht(t.cost)}</b></div>
+   <div style="display:flex;justify-content:space-between;margin-top:8px;color:var(--green)"><span>กำไรสุทธิจากการขาย</span><b>${baht(t.profit)}</b></div>
+   <div style="display:flex;justify-content:space-between;margin-top:8px"><span>อัตรากำไร</span><b>${pct(t.margin)}</b></div>
+ </div>`;
+}
+function setSale(name,value){
+ const k=key(); if(!state.sales[k])state.sales[k]={};
+ state.sales[k][name]=Math.max(0,parseInt(value||0,10));
+ save();renderSales();
+}
+function changeSale(name,delta){
+ const k=key(); if(!state.sales[k])state.sales[k]={};
+ state.sales[k][name]=Math.max(0,(state.sales[k][name]||0)+delta);
+ save();renderSales();
+}
+function clearToday(){if(confirm("ล้างยอดขายของวันนี้ทั้งหมด?")){delete state.sales[key()];save();renderSales()}}
+function renderMenus(){
+ document.getElementById("content").innerHTML=`
+ <div class="section"><h2>เมนูทั้งหมด</h2><button onclick="openMenu()">＋ เพิ่มเมนู</button></div>
+ <div class="list">${state.menus.map((m,i)=>{
+   const cost=menuCost(m); m.cost=cost;
+   const profit=m.price-cost, margin=m.price?profit/m.price*100:0;
+   return `<div class="menu-card">
+    <div class="menu-head"><div><div class="menu-name">${m.name}</div><div class="sub">ต้นทุนต่อแก้ว ${baht(cost)}</div></div><div class="price">${baht(m.price)}</div></div>
+    <div class="stats"><div class="stat"><span>ต้นทุน</span><b class="tag-cost">${pct(m.price?cost/m.price*100:0)}</b></div>
+    <div class="stat"><span>กำไร/แก้ว</span><b class="tag-good">${baht(profit)}</b></div>
+    <div class="stat"><span>กำไร</span><b class="tag-good">${pct(margin)}</b></div></div>
+    <details class="recipe"><summary>ดูสูตรและต้นทุนวัตถุดิบ</summary>
+      ${(m.recipe||[]).map(r=>{
+        const ing=state.ingredients.find(x=>x.name===r[0]), c=ing?unitCost(ing)*Number(r[1]):0;
+        return `<div class="recipe-row"><span><b>${r[0]}</b><small>ใช้ ${r[1]} ${ing?.unit||"หน่วย"} · ${baht(ing?unitCost(ing):0)} / ${ing?.unit||"หน่วย"}</small></span><b>${baht(c)}</b></div>`;
+      }).join("")}
+      <div class="recipe-total"><span>ต้นทุนรวม/แก้ว</span><b>${baht(cost)}</b></div>
+    </details>
+    <div style="display:flex;gap:7px;margin-top:10px"><button class="secondary" style="flex:1" onclick="openMenu(${i})">แก้ไข</button><button class="secondary" onclick="deleteMenu(${i})">ลบ</button></div>
+   </div>`}).join("")}</div>`;
+ save();
+}
+function openMenu(i){
+ const m=i==null?{name:"",price:"",recipe:[]}:state.menus[i];
+ const rows=(m.recipe||[]).map((r,idx)=>recipeEditorRow(r,idx)).join("");
+ document.getElementById("sheet").innerHTML=`<h3>${i==null?"เพิ่มเมนู":"แก้ไขเมนู"}</h3>
+ <div class="field"><label>ชื่อเมนู</label><input id="mn" value="${m.name}"></div>
+ <div class="field"><label>ราคาขาย / แก้ว</label><input id="mp" type="number" step=".01" value="${m.price}"></div>
+ <div class="section" style="margin-top:15px"><h2 style="font-size:15px">สูตรวัตถุดิบ</h2><button onclick="addRecipeRow()">＋ เพิ่มวัตถุดิบ</button></div>
+ <div id="recipe-editor">${rows}</div>
+ <div class="actions"><button class="secondary" onclick="closeModal()">ยกเลิก</button><button class="primary" onclick="saveMenu(${i==null?-1:i})">บันทึก</button></div>`;
+ showModal();
+}
+function recipeEditorRow(r,idx){
+ const ing=state.ingredients.find(x=>x.name===r[0]) || state.ingredients[0];
+ const unit=ing?.unit||"หน่วย";
+ return `<div class="editor-recipe-row" data-idx="${idx}">
+   <select class="ri" onchange="updateRecipeUnit(this)">${state.ingredients.map(x=>`<option value="${x.name}" ${x.name===r[0]?"selected":""}>${x.name}</option>`).join("")}</select>
+   <div class="amount-wrap"><input class="rq" type="number" step=".01" min="0" value="${r[1]}" placeholder="ปริมาณ"><span class="amount-unit">${unit}</span></div>
+   <button class="secondary" onclick="this.parentElement.remove()">ลบ</button>
+ </div>`;
+}
+function updateRecipeUnit(select){
+ const ing=state.ingredients.find(x=>x.name===select.value);
+ select.parentElement.querySelector(".amount-unit").textContent=ing?.unit||"หน่วย";
+}
+function addRecipeRow(){
+ const box=document.getElementById("recipe-editor");
+ const div=document.createElement("div"); div.innerHTML=recipeEditorRow([state.ingredients[0]?.name||"",1],Date.now());
+ box.appendChild(div.firstElementChild);
+}
+function saveMenu(i){
+ const recipe=[...document.querySelectorAll("#recipe-editor .editor-recipe-row")].map(row=>[
+   row.querySelector(".ri").value,
+   Number(row.querySelector(".rq").value||0)
+ ]).filter(r=>r[0] && r[1]>0);
+ const m={name:document.getElementById("mn").value.trim(),price:Number(document.getElementById("mp").value||0),recipe};
+ if(!m.name)return alert("กรุณาใส่ชื่อเมนู");
+ m.cost=menuCost(m);
+ if(i<0)state.menus.push(m);else state.menus[i]=m;
+ save();closeModal();renderMenus();
+}
+function deleteMenu(i){if(confirm("ลบเมนูนี้?")){state.menus.splice(i,1);save();renderMenus()}}
+function renderIngredients(){
+ document.getElementById("content").innerHTML=`
+ <input class="search" id="search" placeholder="ค้นหาวัตถุดิบ..." oninput="filterIngredients()">
+ <div class="section"><h2>คลังวัตถุดิบ</h2><button onclick="openIngredient()">＋ เพิ่ม</button></div>
+ <div class="table" id="ingtable"><div class="tr th"><div>วัตถุดิบ</div><div class="right">บาท/หน่วย</div><div></div><div></div></div>${state.ingredients.map((x,i)=>`
+ <div class="tr ing" data-name="${x.name.toLowerCase()}"><div><b>${x.name}</b><small class="sub">${baht(x.purchase)} / ${x.quantity} ${x.unit}</small></div><div class="right">${baht(unitCost(x))}</div><div></div><div class="right"><button class="secondary" style="padding:5px 7px" onclick="openIngredient(${i})">แก้</button></div></div>`).join("")}</div>
+ <div class="card" style="margin-top:12px"><b>ระบบต้นทุน</b><div class="sub" style="margin-top:5px">แก้ราคาซื้อหรือปริมาณบรรจุครั้งเดียว แล้วต้นทุนต่อหน่วยและต้นทุนของทุกเมนูจะคำนวณใหม่ให้อัตโนมัติ</div></div>`;
+}
+function filterIngredients(){const q=document.getElementById("search").value.toLowerCase();document.querySelectorAll(".ing").forEach(x=>x.style.display=x.dataset.name.includes(q)?"grid":"none")}
+function openIngredient(i){
+ const x=i==null?{name:"",purchase:"",quantity:"",unit:"g"}:state.ingredients[i];
+ document.getElementById("sheet").innerHTML=`<h3>${i==null?"เพิ่มวัตถุดิบ":"แก้ไขวัตถุดิบ"}</h3>
+ <div class="field"><label>ชื่อวัตถุดิบ</label><input id="in" value="${x.name}"></div>
+ <div class="field"><label>ราคาที่ซื้อมา (บาท)</label><input id="ip" type="number" step=".01" value="${x.purchase}"></div>
+ <div class="field"><label>ปริมาณที่ซื้อมา</label><input id="iq" type="number" step=".01" value="${x.quantity}"></div>
+ <div class="field"><label>หน่วย</label><select id="iu"><option ${x.unit==="g"?"selected":""}>g</option><option ${x.unit==="ml"?"selected":""}>ml</option><option ${x.unit==="ชิ้น"?"selected":""}>ชิ้น</option></select></div>
+ <div class="card" style="background:#f8fafc"><div class="sub">ต้นทุนต่อหน่วย</div><b id="preview-cost">${baht((Number(x.purchase)||0)/(Number(x.quantity)||1))} / ${x.unit}</b></div>
+ <div class="actions"><button class="secondary" onclick="closeModal()">ยกเลิก</button><button class="primary" onclick="saveIngredient(${i==null?-1:i})">บันทึก</button></div>`;
+ showModal();
+ document.getElementById("ip").oninput=document.getElementById("iq").oninput=()=>updateCostPreview();
+ document.getElementById("iu").onchange=updateCostPreview;
+}
+function updateCostPreview(){
+ const p=Number(document.getElementById("ip").value||0),q=Number(document.getElementById("iq").value||0),u=document.getElementById("iu").value;
+ document.getElementById("preview-cost").textContent=baht(q?p/q:0)+" / "+u;
+}
+function saveIngredient(i){
+ const x={name:document.getElementById("in").value.trim(),purchase:Number(document.getElementById("ip").value||0),quantity:Number(document.getElementById("iq").value||0),unit:document.getElementById("iu").value};
+ if(!x.name)return alert("กรุณาใส่ชื่อวัตถุดิบ");
+ if(!x.quantity)return alert("กรุณาใส่ปริมาณที่ซื้อมา");
+ if(i<0)state.ingredients.push(x);else state.ingredients[i]=x;
+ ensureMenuCosts(); save();closeModal();renderIngredients();
+}
+function showModal(){document.getElementById("modal").classList.add("show")}
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
+document.getElementById("today").textContent=new Intl.DateTimeFormat("th-TH",{dateStyle:"full"}).format(new Date());
+renderSales();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+}
+</script>
+</body>
+</html>
